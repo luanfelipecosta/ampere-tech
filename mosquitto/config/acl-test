@@ -1,0 +1,2 @@
+# Anonymous test listener — publish to telemetry/test/# only
+topic write telemetry/test/#
