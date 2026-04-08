@@ -1,0 +1,10 @@
+# Backend service - full access to all telemetry
+user backend_service
+topic telemetry/#
+
+
+user dev_763eae526736
+topic telemetry/364fdd22-3b5c-4df6-b8c2-a34a4d9cbd22/dev_763eae526736/#
+
+user dev_6dda1895d6fd
+topic telemetry/364fdd22-3b5c-4df6-b8c2-a34a4d9cbd22/dev_6dda1895d6fd/#

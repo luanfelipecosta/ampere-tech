@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  mosquitto:
+    build: ./mosquitto
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    environment:
+      MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD:-backend_strong_pass_change_me}
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ampere
+      POSTGRES_USER: ampere
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ampere_pass}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ampere -d ampere"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: backend
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://ampere:${POSTGRES_PASSWORD:-ampere_pass}@postgres:5432/ampere
+      MQTT_BROKER: mqtt://mosquitto:1883
+      MQTT_BACKEND_USER: backend_service
+      MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD:-backend_strong_pass_change_me}
+      JWT_SECRET: ${JWT_SECRET:-jwt_secret_change_in_production}
+      MOSQUITTO_CONTAINER: mosquitto
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:
+  postgres-data:
