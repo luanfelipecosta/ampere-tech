@@ -7,6 +7,7 @@ ACL_FILE="/mosquitto/config/acl"
 # Create passwd file if it doesn't exist
 touch "$PASSWD_FILE"
 chmod 600 "$PASSWD_FILE"
+chmod 600 /mosquitto/config/acl-test 2>/dev/null || true
 
 # Always ensure backend_service user exists (idempotent)
 mosquitto_passwd -b "$PASSWD_FILE" backend_service "$MQTT_BACKEND_PASSWORD"

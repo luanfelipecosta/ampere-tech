@@ -31,11 +31,25 @@ services:
       timeout: 5s
       retries: 10
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      DOMAIN: ${DOMAIN}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
   backend:
     build: ./backend
     container_name: backend
-    ports:
-      - "3000:3000"
     environment:
       DATABASE_URL: postgres://ampere:${POSTGRES_PASSWORD:-ampere_pass}@postgres:5432/ampere
       MQTT_BROKER: mqtt://mosquitto:1883
@@ -57,3 +71,5 @@ volumes:
   mosquitto-data:
   mosquitto-log:
   postgres-data:
+  caddy-data:
+  caddy-config:
