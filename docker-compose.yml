@@ -57,6 +57,7 @@ services:
       MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD:-backend_strong_pass_change_me}
       JWT_SECRET: ${JWT_SECRET:-jwt_secret_change_in_production}
       MOSQUITTO_CONTAINER: mosquitto
+      PORT: 4001
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - /var/run/docker.sock:/var/run/docker.sock
