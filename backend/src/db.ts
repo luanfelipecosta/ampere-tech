@@ -19,6 +19,7 @@ export async function initDb(): Promise<void> {
       CREATE TABLE IF NOT EXISTS devices (
         id                 VARCHAR(50)  PRIMARY KEY,
         user_id            VARCHAR(36)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        mac_address        VARCHAR(20)  UNIQUE,
         mqtt_user          VARCHAR(100) NOT NULL UNIQUE,
         mqtt_password_hash VARCHAR(255) NOT NULL,
         created_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW()
@@ -50,6 +51,7 @@ export async function initDb(): Promise<void> {
       ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS power_factor  NUMERIC(6,4);
       ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS import_energy NUMERIC(12,4);
       ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS export_energy NUMERIC(12,4);
+      ALTER TABLE devices   ADD COLUMN IF NOT EXISTS mac_address   VARCHAR(20) UNIQUE;
     `);
   } finally {
     client.release();

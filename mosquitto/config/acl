@@ -3,10 +3,5 @@ user backend_service
 topic telemetry/#
 
 
-user dev_763eae526736
-topic write telemetry/dev_763eae526736/data
-topic read telemetry/dev_763eae526736/control
-
-user dev_6dda1895d6fd
-topic write telemetry/dev_6dda1895d6fd/data
-topic read telemetry/dev_6dda1895d6fd/control
+# Devices below are provisioned automatically via POST /devices/register
+# Format: updev/{MAC} publish, downdev/{MAC} subscribe

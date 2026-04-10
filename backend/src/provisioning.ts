@@ -61,15 +61,17 @@ async function reloadMosquitto(): Promise<void> {
 export async function provisionDeviceMqtt(
   userId: string,
   deviceId: string,
+  mac: string,
   password: string
 ): Promise<void> {
+  const macUpper = mac.toUpperCase();
   await createMqttCredentials(deviceId, password);
   await appendAclBlock(deviceId, [
-    `topic write telemetry/${deviceId}/data`,
-    `topic read telemetry/${deviceId}/control`,
+    `topic write updev/${macUpper}`,
+    `topic read downdev/${macUpper}`,
   ]);
-  // Grant the owning user read access to exactly this device's data topic
-  await addUserTopic(userId, `topic read telemetry/${deviceId}/data`);
+  // Grant the owning user read access to exactly this device's telemetry topic
+  await addUserTopic(userId, `topic read updev/${macUpper}`);
   await reloadMosquitto();
 }
 
