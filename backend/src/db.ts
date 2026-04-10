@@ -42,6 +42,15 @@ export async function initDb(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_telemetry_user_circuit
         ON telemetry(user_id, circuit);
     `);
+
+    // Schema migrations — safe to run repeatedly
+    await client.query(`
+      ALTER TABLE telemetry ALTER COLUMN circuit DROP NOT NULL;
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS frequency     NUMERIC(8,3);
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS power_factor  NUMERIC(6,4);
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS import_energy NUMERIC(12,4);
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS export_energy NUMERIC(12,4);
+    `);
   } finally {
     client.release();
   }

@@ -29,7 +29,10 @@ router.get('/', requireAuth, async (req: AuthRequest, res: Response): Promise<vo
   params.push(limitNum, offsetNum);
 
   const result = await pool.query(
-    `SELECT id, user_id, device_id, circuit, voltage, current, power, energy_kwh, timestamp
+    `SELECT id, user_id, device_id, circuit,
+            voltage, current, power, energy_kwh,
+            frequency, power_factor, import_energy, export_energy,
+            timestamp
      FROM telemetry
      WHERE ${where}
      ORDER BY timestamp DESC
@@ -78,16 +81,20 @@ router.get('/aggregate', requireAuth, async (req: AuthRequest, res: Response): P
 
   const result = await pool.query(
     `SELECT ${groupColumn},
-            SUM(energy_kwh) AS total_energy_kwh,
-            AVG(voltage)    AS avg_voltage,
-            AVG(current)    AS avg_current,
-            AVG(power)      AS avg_power,
-            COUNT(*)        AS reading_count,
-            MAX(timestamp)  AS last_reading
+            SUM(import_energy) AS total_import_kwh,
+            SUM(export_energy) AS total_export_kwh,
+            SUM(energy_kwh)    AS total_energy_kwh,
+            AVG(voltage)       AS avg_voltage,
+            AVG(current)       AS avg_current,
+            AVG(power)         AS avg_power,
+            AVG(frequency)     AS avg_frequency,
+            AVG(power_factor)  AS avg_power_factor,
+            COUNT(*)           AS reading_count,
+            MAX(timestamp)     AS last_reading
      FROM telemetry
      WHERE ${where}
      GROUP BY ${groupColumn}
-     ORDER BY total_energy_kwh DESC`,
+     ORDER BY total_import_kwh DESC NULLS LAST`,
     params
   );
 

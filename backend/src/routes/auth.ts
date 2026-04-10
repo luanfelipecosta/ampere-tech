@@ -50,14 +50,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
   res.status(201).json({
     user_id: userId,
     email,
-    mqtt: {
-      broker: 'localhost',
-      port: 1883,
-      username: userId,
-      password: mqttPassword,
-      subscribe_topic: `telemetry/${userId}/#`,
-    },
-    message: 'User registered. MQTT credentials may take a few seconds to activate.',
+    message: 'User registered. Use POST /devices/register to provision meters.',
   });
 });
 

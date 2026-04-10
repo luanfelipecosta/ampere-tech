@@ -58,6 +58,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-jwt_secret_change_in_production}
       MOSQUITTO_CONTAINER: mosquitto
       PORT: 4001
+      PUBLIC_BROKER_HOST: ${PUBLIC_BROKER_HOST}
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - /var/run/docker.sock:/var/run/docker.sock

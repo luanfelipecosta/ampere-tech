@@ -1,14 +1,31 @@
 import mqtt from 'mqtt';
 import { pool } from './db';
 
-// telemetry/{user_id}/{device_id}/{circuit_id}
-const TOPIC_REGEX = /^telemetry\/([^/]+)\/([^/]+)\/([^/]+)$/;
+// Meters publish to:  telemetry/{device_id}/data
+// Backend publishes to: telemetry/{device_id}/control
+const DATA_TOPIC_REGEX = /^telemetry\/([^/]+)\/data$/;
 
 interface TelemetryPayload {
   voltage?: number;
   current?: number;
   power?: number;
   energy_kwh?: number;
+  frequency?: number;
+  power_factor?: number;
+  import_energy?: number;
+  export_energy?: number;
+}
+
+let mqttClient: mqtt.MqttClient | null = null;
+
+export function publishControl(deviceId: string, state: 'on' | 'off'): void {
+  if (!mqttClient) throw new Error('MQTT client not initialized');
+  const topic = `telemetry/${deviceId}/control`;
+  const payload = JSON.stringify({ do: state });
+  mqttClient.publish(topic, payload, { qos: 1 }, (err) => {
+    if (err) console.error(`[MQTT] Failed to publish control to ${topic}:`, err.message);
+    else console.log(`[MQTT] DO command sent to ${deviceId}: ${state}`);
+  });
 }
 
 export function startMqttConsumer(): void {
@@ -24,22 +41,22 @@ export function startMqttConsumer(): void {
     reconnectPeriod: 5000,
   });
 
+  mqttClient = client;
+
   client.on('connect', () => {
     console.log('[MQTT] Connected to broker');
-    client.subscribe('telemetry/#', { qos: 1 }, (err) => {
+    // Subscribe only to data topics; ignore control topics
+    client.subscribe('telemetry/+/data', { qos: 1 }, (err) => {
       if (err) console.error('[MQTT] Subscribe error:', err);
-      else console.log('[MQTT] Subscribed to telemetry/#');
+      else console.log('[MQTT] Subscribed to telemetry/+/data');
     });
   });
 
-  client.on('message', (topic: string, payload: Buffer) => {
-    const match = topic.match(TOPIC_REGEX);
-    if (!match) {
-      console.warn(`[MQTT] Unexpected topic format: ${topic}`);
-      return;
-    }
+  client.on('message', async (topic: string, payload: Buffer) => {
+    const match = topic.match(DATA_TOPIC_REGEX);
+    if (!match) return;
 
-    const [, userId, deviceId, circuit] = match;
+    const [, deviceId] = match;
 
     let data: TelemetryPayload;
     try {
@@ -49,10 +66,35 @@ export function startMqttConsumer(): void {
       return;
     }
 
+    // Look up user_id from device registry
+    let userId: string;
+    try {
+      const result = await pool.query<{ user_id: string }>(
+        'SELECT user_id FROM devices WHERE id = $1',
+        [deviceId]
+      );
+      if (result.rowCount === 0) {
+        console.warn(`[MQTT] Unknown device: ${deviceId}`);
+        return;
+      }
+      userId = result.rows[0].user_id;
+    } catch (err: unknown) {
+      console.error('[MQTT] Device lookup error:', (err as Error).message);
+      return;
+    }
+
     pool.query(
-      `INSERT INTO telemetry (user_id, device_id, circuit, voltage, current, power, energy_kwh)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [userId, deviceId, circuit, data.voltage ?? null, data.current ?? null, data.power ?? null, data.energy_kwh ?? null]
+      `INSERT INTO telemetry
+         (user_id, device_id, voltage, current, power, energy_kwh,
+          frequency, power_factor, import_energy, export_energy)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        userId, deviceId,
+        data.voltage ?? null, data.current ?? null,
+        data.power ?? null, data.energy_kwh ?? null,
+        data.frequency ?? null, data.power_factor ?? null,
+        data.import_energy ?? null, data.export_energy ?? null,
+      ]
     ).catch((err: Error) => console.error('[MQTT] DB insert error:', err.message));
   });
 

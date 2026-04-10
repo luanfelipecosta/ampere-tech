@@ -4,7 +4,9 @@ topic telemetry/#
 
 
 user dev_763eae526736
-topic telemetry/364fdd22-3b5c-4df6-b8c2-a34a4d9cbd22/dev_763eae526736/#
+topic write telemetry/dev_763eae526736/data
+topic read telemetry/dev_763eae526736/control
 
 user dev_6dda1895d6fd
-topic telemetry/364fdd22-3b5c-4df6-b8c2-a34a4d9cbd22/dev_6dda1895d6fd/#
+topic write telemetry/dev_6dda1895d6fd/data
+topic read telemetry/dev_6dda1895d6fd/control

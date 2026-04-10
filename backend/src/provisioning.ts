@@ -1,17 +1,16 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const PASSWD_FILE = '/mosquitto/config/passwd';
 const ACL_FILE = '/mosquitto/config/acl';
 const MOSQUITTO_CONTAINER = process.env.MOSQUITTO_CONTAINER || 'mosquitto';
 
 async function createMqttCredentials(username: string, password: string): Promise<void> {
-  // mosquitto_passwd -b: batch mode (non-interactive)
-  // Quote arguments to prevent shell injection
-  await execAsync(`mosquitto_passwd -b '${PASSWD_FILE}' '${username}' '${password}'`);
+  // execFile passes args as an array — never interpolated into a shell, no injection risk
+  await execFileAsync('mosquitto_passwd', ['-b', PASSWD_FILE, username, password]);
 }
 
 async function appendAclBlock(username: string, topicLines: string[]): Promise<void> {
@@ -22,20 +21,41 @@ async function appendAclBlock(username: string, topicLines: string[]): Promise<v
     content = '';
   }
 
-  // Idempotency check: skip if user block already present
   const userMarker = `\nuser ${username}\n`;
   const startMarker = `user ${username}\n`;
   if (content.includes(userMarker) || content.startsWith(startMarker)) {
+    return; // block already exists; topics are added separately via addUserTopic
+  }
+
+  const lines = topicLines.length > 0 ? topicLines.join('\n') + '\n' : '';
+  await fs.appendFile(ACL_FILE, `\nuser ${username}\n${lines}`);
+}
+
+/**
+ * Insert a topic line into an existing user's ACL block.
+ * Called when a new device is registered so the owner gains read access.
+ */
+async function addUserTopic(userId: string, topicLine: string): Promise<void> {
+  let content = '';
+  try {
+    content = await fs.readFile(ACL_FILE, 'utf8');
+  } catch {
     return;
   }
 
-  const block = `\nuser ${username}\n${topicLines.join('\n')}\n`;
-  await fs.appendFile(ACL_FILE, block);
+  if (content.includes(topicLine)) return; // already present
+
+  const userLine = `user ${userId}`;
+  const idx = content.indexOf(userLine);
+  if (idx === -1) return; // user block not yet provisioned — topics will be added at provisioning time
+
+  const endOfUserLine = content.indexOf('\n', idx) + 1;
+  const updated = content.slice(0, endOfUserLine) + topicLine + '\n' + content.slice(endOfUserLine);
+  await fs.writeFile(ACL_FILE, updated);
 }
 
 async function reloadMosquitto(): Promise<void> {
-  // Send SIGHUP to PID 1 inside the mosquitto container to reload config
-  await execAsync(`docker exec '${MOSQUITTO_CONTAINER}' kill -HUP 1`);
+  await execFileAsync('docker', ['exec', MOSQUITTO_CONTAINER, 'kill', '-HUP', '1']);
 }
 
 export async function provisionDeviceMqtt(
@@ -45,8 +65,11 @@ export async function provisionDeviceMqtt(
 ): Promise<void> {
   await createMqttCredentials(deviceId, password);
   await appendAclBlock(deviceId, [
-    `topic telemetry/${userId}/${deviceId}/#`,
+    `topic write telemetry/${deviceId}/data`,
+    `topic read telemetry/${deviceId}/control`,
   ]);
+  // Grant the owning user read access to exactly this device's data topic
+  await addUserTopic(userId, `topic read telemetry/${deviceId}/data`);
   await reloadMosquitto();
 }
 
@@ -55,8 +78,7 @@ export async function provisionUserMqtt(
   password: string
 ): Promise<void> {
   await createMqttCredentials(userId, password);
-  await appendAclBlock(userId, [
-    `topic read telemetry/${userId}/#`,
-  ]);
+  // Empty block — topic lines are added per-device as devices are registered
+  await appendAclBlock(userId, []);
   await reloadMosquitto();
 }
