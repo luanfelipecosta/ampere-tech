@@ -47,11 +47,17 @@ export async function initDb(): Promise<void> {
     // Schema migrations — safe to run repeatedly
     await client.query(`
       ALTER TABLE telemetry ALTER COLUMN circuit DROP NOT NULL;
-      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS frequency     NUMERIC(8,3);
-      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS power_factor  NUMERIC(6,4);
-      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS import_energy NUMERIC(12,4);
-      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS export_energy NUMERIC(12,4);
-      ALTER TABLE devices   ADD COLUMN IF NOT EXISTS mac_address   VARCHAR(20) UNIQUE;
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS frequency              NUMERIC(8,3);
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS power_factor           NUMERIC(6,4);
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS import_energy          NUMERIC(12,4);
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS export_energy          NUMERIC(12,4);
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS apparent_power         NUMERIC(10,3);
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS reactive_power         NUMERIC(10,3);
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS import_reactive_energy NUMERIC(12,4);
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS export_reactive_energy NUMERIC(12,4);
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS do_status              SMALLINT;
+      ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS serial_number          VARCHAR(50);
+      ALTER TABLE devices   ADD COLUMN IF NOT EXISTS mac_address            VARCHAR(20) UNIQUE;
     `);
   } finally {
     client.release();
