@@ -110,16 +110,21 @@ export function startMqttConsumer(): void {
       return;
     }
 
-    // Look up device by MAC address
-    let userId: string;
+    // Look up device by MAC address, auto-registering anonymous devices on first seen
+    let userId: string | null;
     let deviceId: string;
+    const macUpper = mac.toUpperCase();
     try {
-      const result = await pool.query<{ id: string; user_id: string }>(
+      await pool.query(
+        `INSERT INTO devices (id, mac_address) VALUES ($1, $1) ON CONFLICT DO NOTHING`,
+        [macUpper]
+      );
+      const result = await pool.query<{ id: string; user_id: string | null }>(
         'SELECT id, user_id FROM devices WHERE mac_address = $1',
-        [mac.toUpperCase()]
+        [macUpper]
       );
       if (result.rowCount === 0) {
-        console.warn(`[MQTT] Unknown MAC address: ${mac}`);
+        console.warn(`[MQTT] Could not resolve device for MAC: ${mac}`);
         return;
       }
       ({ id: deviceId, user_id: userId } = result.rows[0]);

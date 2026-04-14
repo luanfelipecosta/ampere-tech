@@ -1,2 +1,3 @@
-# Anonymous test listener — publish to telemetry/test/# only
+# Anonymous test listener — publish to telemetry/test/# or updev/+
 topic write telemetry/test/#
+topic write updev/+

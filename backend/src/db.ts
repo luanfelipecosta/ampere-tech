@@ -58,6 +58,10 @@ export async function initDb(): Promise<void> {
       ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS do_status              SMALLINT;
       ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS serial_number          VARCHAR(50);
       ALTER TABLE devices   ADD COLUMN IF NOT EXISTS mac_address            VARCHAR(20) UNIQUE;
+      ALTER TABLE devices   ALTER COLUMN user_id             DROP NOT NULL;
+      ALTER TABLE devices   ALTER COLUMN mqtt_user           DROP NOT NULL;
+      ALTER TABLE devices   ALTER COLUMN mqtt_password_hash  DROP NOT NULL;
+      ALTER TABLE telemetry ALTER COLUMN user_id             DROP NOT NULL;
     `);
   } finally {
     client.release();

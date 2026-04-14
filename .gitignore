@@ -4,3 +4,4 @@ backend/node_modules/
 mosquitto/data/
 mosquitto/log/
 .env
+.worktrees/

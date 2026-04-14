@@ -50,6 +50,8 @@ services:
   backend:
     build: ./backend
     container_name: backend
+    ports:
+      - "4001:4001"
     environment:
       DATABASE_URL: postgres://ampere:${POSTGRES_PASSWORD:-ampere_pass}@postgres:5432/ampere
       MQTT_BROKER: mqtt://mosquitto:1883
@@ -68,6 +70,16 @@ services:
       mosquitto:
         condition: service_started
     restart: unless-stopped
+    develop:
+      watch:
+        - action: rebuild
+          path: ./backend/src
+        - action: rebuild
+          path: ./backend/package.json
+        - action: rebuild
+          path: ./backend/bun.lockb
+        - action: rebuild
+          path: ./backend/tsconfig.json
 
 volumes:
   mosquitto-data:

@@ -1,7 +1,15 @@
 # Backend service - full access to all telemetry
 user backend_service
 topic telemetry/#
+topic read updev/+
 
 
 # Devices below are provisioned automatically via POST /devices/register
 # Format: updev/{MAC} publish, downdev/{MAC} subscribe
+
+user 3cd92fc6-c99d-4692-83cb-aec3e4dd455b
+topic read updev/AABBCCDDEEFF
+
+user dev_5972b9856a06
+topic write updev/AABBCCDDEEFF
+topic read downdev/AABBCCDDEEFF
