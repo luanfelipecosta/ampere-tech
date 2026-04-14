@@ -1,8 +1,65 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { pool } from '../db';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 
 const router = Router();
+
+// GET /telemetry/device/:mac — public, no auth required
+router.get('/device/:mac', async (req: Request, res: Response): Promise<void> => {
+  const { mac } = req.params;
+  const { limit = '100', offset = '0' } = req.query as Record<string, string>;
+
+  // Validate MAC: exactly 12 hex characters
+  if (!/^[A-Fa-f0-9]{12}$/.test(mac)) {
+    res.status(400).json({ error: 'Invalid MAC address format. Expected 12 hex characters.' });
+    return;
+  }
+
+  const limitNum = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 1000);
+  const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
+
+  // Resolve device_id from mac_address
+  const deviceResult = await pool.query(
+    `SELECT id FROM devices WHERE UPPER(mac_address) = $1`,
+    [mac.toUpperCase()]
+  );
+
+  if (deviceResult.rows.length === 0) {
+    res.status(404).json({ error: 'Device not found' });
+    return;
+  }
+
+  const deviceId = (deviceResult.rows[0] as { id: string }).id;
+
+  const result = await pool.query(
+    `SELECT id, device_id, circuit,
+            voltage, current, power, energy_kwh,
+            frequency, power_factor,
+            import_energy, export_energy,
+            apparent_power, reactive_power,
+            import_reactive_energy, export_reactive_energy,
+            do_status, serial_number, timestamp
+     FROM telemetry
+     WHERE device_id = $1
+     ORDER BY timestamp DESC
+     LIMIT $2 OFFSET $3`,
+    [deviceId, limitNum, offsetNum]
+  );
+
+  const countResult = await pool.query(
+    `SELECT COUNT(*) AS total FROM telemetry WHERE device_id = $1`,
+    [deviceId]
+  );
+
+  res.json({
+    data: result.rows,
+    pagination: {
+      total: parseInt((countResult.rows[0] as { total: string }).total, 10),
+      limit: limitNum,
+      offset: offsetNum,
+    },
+  });
+});
 
 // GET /telemetry?device_id=...&circuit=...&limit=100&offset=0
 router.get('/', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
