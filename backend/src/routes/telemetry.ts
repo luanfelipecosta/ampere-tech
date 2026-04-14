@@ -4,19 +4,15 @@ import { requireAuth, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-// GET /telemetry/device/:mac — public, no auth required
+// GET /telemetry/device/:mac — public, no auth required, returns 5 latest entries
 router.get('/device/:mac', async (req: Request, res: Response): Promise<void> => {
   const { mac } = req.params;
-  const { limit = '100', offset = '0' } = req.query as Record<string, string>;
 
   // Validate MAC: exactly 12 hex characters
   if (!/^[A-Fa-f0-9]{12}$/.test(mac)) {
     res.status(400).json({ error: 'Invalid MAC address format. Expected 12 hex characters.' });
     return;
   }
-
-  const limitNum = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 1000);
-  const offsetNum = Math.max(parseInt(offset, 10) || 0, 0);
 
   try {
     // Resolve device_id from mac_address
@@ -43,23 +39,11 @@ router.get('/device/:mac', async (req: Request, res: Response): Promise<void> =>
        FROM telemetry
        WHERE device_id = $1
        ORDER BY timestamp DESC
-       LIMIT $2 OFFSET $3`,
-      [deviceId, limitNum, offsetNum]
-    );
-
-    const countResult = await pool.query(
-      `SELECT COUNT(*) AS total FROM telemetry WHERE device_id = $1`,
+       LIMIT 5`,
       [deviceId]
     );
 
-    res.json({
-      data: result.rows,
-      pagination: {
-        total: parseInt((countResult.rows[0] as { total: string }).total, 10),
-        limit: limitNum,
-        offset: offsetNum,
-      },
-    });
+    res.json({ data: result.rows });
   } catch {
     res.status(500).json({ error: 'Internal server error' });
   }
